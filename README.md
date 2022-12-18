@@ -26,4 +26,4 @@ A utility for scraping businesses from yelp.com written with scrapy.
 2. Input category, location, and the number of pages to scrape as prompted.
 
 ### Example output
-![output_file_image.jpeg](examples%2Foutput_file_image.jpeg)
+![output_file_image.jpeg](exfi2Foutput_file_image.jpeg)
