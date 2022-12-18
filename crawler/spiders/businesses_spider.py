@@ -17,10 +17,12 @@ class BusinessSpiderSpider(scrapy.Spider):
         super().__init__(**kwargs)
 
         self.search_params = {
-            "find_desc": input("Input category name (for example: contractors)\n>>> "),
-            "find_loc": input("Input location (for example: San Francisco, CA)\n>>> "),
-            "start": "0"
+            "find_desc": input("Input category name (for example: contractors).\n>>> "),
+            "find_loc": input("Input location (for example: San Francisco, CA).\n>>> "),
+            "start": "0",
         }
+
+        self.pages_to_scrape = int(input("Input amount of pages to scrape.\n>>> "))
 
     def start_requests(self):
         urls = [
@@ -40,8 +42,10 @@ class BusinessSpiderSpider(scrapy.Spider):
 
         # Create a list of businesses while filtering out sponsored results.
         result_list = [
-            result for result
-            in response_dict["searchPageProps"]["mainContentComponentsListProps"]
+            result
+            for result in response_dict["searchPageProps"][
+                "mainContentComponentsListProps"
+            ]
             if "bizId" in result and result["searchResultBusiness"]["isAd"] is False
         ]
 
@@ -62,13 +66,27 @@ class BusinessSpiderSpider(scrapy.Spider):
                     "rating": business["rating"],
                     "review_count": business["reviewCount"],
                     "phone": business["phone"],
-                }
+                },
+            )
+
+        pagination = self._get_pagination_info(response_dict)
+
+        if self._check_next_page(pagination):
+            start_result = {
+                "start": str(pagination["startResult"] + pagination["resultsPerPage"])
+            }
+
+            yield scrapy.FormRequest(
+                url=self.SEARCH_URL,
+                method="GET",
+                formdata=self.search_params | start_result,
+                callback=self.parse,
             )
 
     def parse_reviews(self, response: TextResponse, **kwargs):
         response_dict = json.loads(response.text)
 
-        reviews_list = response_dict["reviews"][:self.REVIEWS_COUNT]
+        reviews_list = response_dict["reviews"][: self.REVIEWS_COUNT]
 
         yield {
             "id": response.meta["id"],
@@ -84,5 +102,21 @@ class BusinessSpiderSpider(scrapy.Spider):
                     "date": review["localizedDate"],
                 }
                 for review in reviews_list
-            ]
+            ],
         }
+
+    @staticmethod
+    def _get_pagination_info(response_dict: dict) -> dict[str, int]:
+        content = response_dict["searchPageProps"]["mainContentComponentsListProps"]
+        pagination = next(item for item in content if item.get("type") == "pagination")
+
+        return pagination["props"]
+
+    def _check_next_page(self, pagination: dict):
+        page_number = pagination["startResult"] // pagination["resultsPerPage"] + 1
+        results_left = pagination["totalResults"] - pagination["startResult"]
+
+        return (
+            page_number < self.pages_to_scrape
+            and results_left > pagination["resultsPerPage"]
+        )
