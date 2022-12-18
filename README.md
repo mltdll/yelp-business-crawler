@@ -23,7 +23,7 @@ A utility for scraping businesses from yelp.com written with scrapy.
    ```shell
    scrapy crawl business -o businesses.json 
    ```
-2. Input category, location, and the number of pages to scrap as prompted.
+2. Input category, location, and the number of pages to scrape as prompted.
 
 ### Example output
 ![output_file_image.jpeg](examples%2Foutput_file_image.jpeg)
