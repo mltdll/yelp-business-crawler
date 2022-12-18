@@ -43,7 +43,7 @@ class BusinessSpiderSpider(scrapy.Spider):
             yield {
                 "id": result["bizId"],
                 "name": business["name"],
-                "url": urljoin(self.allowed_domains[0], business["businessUrl"]),
+                "url": response.urljoin(business["businessUrl"]),
                 "rating": business["rating"],
                 "review_count": business["reviewCount"],
                 "phone": business["phone"],
