@@ -69,6 +69,7 @@ class BusinessSpiderSpider(scrapy.Spider):
                 },
             )
 
+        # Continue scraping if more pages remain to be scraped.
         pagination = self._get_pagination_info(response_dict)
 
         if self._check_next_page(pagination):
@@ -84,6 +85,8 @@ class BusinessSpiderSpider(scrapy.Spider):
             )
 
     def parse_reviews(self, response: TextResponse, **kwargs):
+        """Yields Spider's final output"""
+
         response_dict = json.loads(response.text)
 
         reviews_list = response_dict["reviews"][: self.REVIEWS_COUNT]
@@ -107,12 +110,19 @@ class BusinessSpiderSpider(scrapy.Spider):
 
     @staticmethod
     def _get_pagination_info(response_dict: dict) -> dict[str, int]:
+        """Gets pagination info from JSON response dictionary"""
+
         content = response_dict["searchPageProps"]["mainContentComponentsListProps"]
         pagination = next(item for item in content if item.get("type") == "pagination")
 
         return pagination["props"]
 
-    def _check_next_page(self, pagination: dict):
+    def _check_next_page(self, pagination: dict) -> bool:
+        """
+        Returns True if next page is available and not greater than max page
+        permitted, otherwise returns False.
+        """
+
         page_number = pagination["startResult"] // pagination["resultsPerPage"] + 1
         results_left = pagination["totalResults"] - pagination["startResult"]
 
