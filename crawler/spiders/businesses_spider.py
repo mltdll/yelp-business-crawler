@@ -8,9 +8,23 @@ from scrapy.http import TextResponse
 class BusinessSpiderSpider(scrapy.Spider):
     name = "business"
     allowed_domains = ["www.yelp.com"]
-    start_urls = [
-        "https://www.yelp.com/search/snippet?find_desc=Delivery&find_loc=San+Francisco%2C+CA&start=0",
-    ]
+
+    def start_requests(self):
+        urls = [
+            "https://www.yelp.com/search/snippet",
+        ]
+        params = {
+            "find_desc": input("Input category name (for example: contractors)\n>>> "),
+            "find_loc": input("Input location (for example: San Francisco, CA)\n>>> "),
+        }
+
+        for url in urls:
+            yield scrapy.FormRequest(
+                url=url,
+                method="GET",
+                formdata=params,
+                callback=self.parse
+            )
 
     def parse(self, response: TextResponse, **kwargs):
         response_dict = json.loads(response.text)
