@@ -9,20 +9,24 @@ class BusinessSpiderSpider(scrapy.Spider):
     name = "business"
     allowed_domains = ["www.yelp.com"]
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        self.search_params = {
+            "find_desc": input("Input category name (for example: contractors)\n>>> "),
+            "find_loc": input("Input location (for example: San Francisco, CA)\n>>> "),
+        }
+
     def start_requests(self):
         urls = [
             "https://www.yelp.com/search/snippet",
         ]
-        params = {
-            "find_desc": input("Input category name (for example: contractors)\n>>> "),
-            "find_loc": input("Input location (for example: San Francisco, CA)\n>>> "),
-        }
 
         for url in urls:
             yield scrapy.FormRequest(
                 url=url,
                 method="GET",
-                formdata=params,
+                formdata=self.search_params,
                 callback=self.parse
             )
 
