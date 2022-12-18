@@ -1,4 +1,5 @@
 import json
+from urllib.parse import urlparse, parse_qs
 
 import scrapy
 from scrapy.http import TextResponse
@@ -12,6 +13,7 @@ class BusinessSpiderSpider(scrapy.Spider):
     SEARCH_URL = BASE_URL + "/search/snippet"
     REVIEW_PARAMS = {"rl": "en", "sort_by": "relevance_desc"}
     REVIEWS_COUNT = 5
+    META_KEYS = ["name", "url", "rating", "review_count", "phone", "website", "reviews"]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -60,12 +62,12 @@ class BusinessSpiderSpider(scrapy.Spider):
                 formdata=self.REVIEW_PARAMS,
                 callback=self.parse_reviews,
                 meta={
-                    "id": business_id,
                     "name": business["name"],
                     "url": f"{self.BASE_URL}{business['businessUrl']}",
                     "rating": business["rating"],
                     "review_count": business["reviewCount"],
                     "phone": business["phone"],
+                    "website": None,
                 },
             )
 
@@ -85,19 +87,13 @@ class BusinessSpiderSpider(scrapy.Spider):
             )
 
     def parse_reviews(self, response: TextResponse, **kwargs):
-        """Yields Spider's final output"""
+        """Adds reviews to the output"""
 
         response_dict = json.loads(response.text)
 
         reviews_list = response_dict["reviews"][: self.REVIEWS_COUNT]
 
-        yield {
-            "id": response.meta["id"],
-            "name": response.meta["name"],
-            "url": response.meta["url"],
-            "rating": response.meta["rating"],
-            "review_count": response.meta["review_count"],
-            "phone": response.meta["phone"],
+        reviews_dict = {
             "reviews": [
                 {
                     "reviewer name": review["user"]["markupDisplayName"],
@@ -107,6 +103,25 @@ class BusinessSpiderSpider(scrapy.Spider):
                 for review in reviews_list
             ],
         }
+
+        yield scrapy.Request(
+            url=response.meta["url"],
+            callback=self.parse_website,
+            meta=response.meta | reviews_dict,
+        )
+
+    def parse_website(self, response: TextResponse):
+        website_url = response.css("a[href^='/biz_redir']").xpath("@href").get()
+
+        if website_url is not None:
+            parsed_url = urlparse(website_url)
+            website_url = parse_qs(parsed_url.query)["url"][0]
+
+        meta = {
+            key: value for key, value in response.meta.items() if key in self.META_KEYS
+        }
+
+        yield meta | {"website": website_url}
 
     @staticmethod
     def _get_pagination_info(response_dict: dict) -> dict[str, int]:
